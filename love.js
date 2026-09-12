@@ -167,8 +167,8 @@ function closeLetter(){
 
 closeBtn.addEventListener('click', closeLetter);
 
-const DEFAULT_HINT = 'Hold to draw the bow — release to shoot ♡';
-const MISS_HINTS = ['So close — try again ♡', 'Aim for the heart ♡', 'Cupid never misses twice ♡'];
+const DEFAULT_HINT = 'پەنجەت دابگرە بۆ ڕاکێشانی کەوانەکە — بەرەڵای بکە بۆ پێکانی دڵم ♡';
+const MISS_HINTS = ['زۆر نزیک بوویت — دووبارە هەوڵبدەرەوە گیانەکەم ♡', 'نیشانە ڕاستەوخۆ لە ناوەڕاستی دڵم بگرە ♡', 'تیری عەشقەکەمان نابێت هەرگیز هەڵە بکات ♡'];
 const ARROW_LEN  = 56;
 
 const MIN_DRAW   = 6;
@@ -434,9 +434,9 @@ noBtn.addEventListener('focus', dodge);
 
 function sayYes(){
   catState = 'happy';
-  title.textContent = 'Yayyy! I love you ♡';
+  title.textContent = 'قوربانت بم! منیش بێ سنوور ئاشقتم ♡';
   drawSprite(catCanvas, CAT_HAPPY);
-  catCanvas.setAttribute('aria-label', 'A happy cat with a bow');
+  catCanvas.setAttribute('aria-label', 'پشیلەیەکی دڵخۆش بە کەوانەیەکەوە');
 
   buttons.hidden = true;
   finalText.hidden = false;
@@ -564,9 +564,9 @@ function blink(){
 
 function reset(){
   catState = 'idle';
-  title.textContent = 'Happy 1 month, my love ♡ Still love me?';
+  title.textContent = 'یادی یەک مانگەی پێکەوەبوونمان پیرۆز تاقانەکەم ♡ هێشتا منت خۆش دەوێت؟';
   drawSprite(catCanvas, CAT_IDLE);
-  catCanvas.setAttribute('aria-label', 'A little cat holding a heart');
+  catCanvas.setAttribute('aria-label', 'پشیلەیەکی بچووک دڵێکی گرتووە');
   buttons.hidden = false;
   finalText.hidden = true;
   finalText.classList.remove('is-show');
