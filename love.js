@@ -1,46 +1,35 @@
-/* ============================================================
-   LOVE — interactive pixel-art love letter
-   • Real SVG bow with bending limbs + snapping string
-   • Rotating <g> element (bulletproof across browsers)
-   • Screen shake + flash + impact ring on hit
-   • Cat with 4 happy frames + squash-and-stretch jump
-   ============================================================ */
+const $ = (id) => document.getElementById(id);
 
-const $ = id => document.getElementById(id);
-
-const aimStage   = $('aimStage');
-const target     = $('target');
-const targetEnv  = target.querySelector('.envelope');
-const arrowEl    = $('arrow');
-const bowRot     = $('bowRot');
-const bowLimb    = $('bowLimb');
-const bowString  = $('bowString');
-const bowGrip    = $('bowGrip');
-const nockEl     = $('nock');
-const hintText   = $('hintText');
-const win        = $('window');
-const content    = $('content');
-const titleEl    = $('title');
-const catCanvas  = $('cat');
-const buttons    = $('buttons');
-const yesBtn     = $('yesBtn');
-const noBtn      = $('noBtn');
-const finalText  = $('final');
-const closeBtn   = $('closeBtn');
-const confettiBox= $('confetti');
-const rainBox    = $('rain');
-const sceneEl    = $('scene');
-const flashEl    = $('flash');
-const impactEl   = $('impact');
+const aimStage      = $('aimStage');
+const target        = $('target');
+const targetEnv     = target.querySelector('.envelope');
+const arrow         = $('arrow');
+const bow           = $('bow');
+const nockEl        = $('nock');
+const hint          = $('hint');
+const hintText      = $('hintText');
+const win           = $('window');
+const content       = $('content');
+const title         = $('title');
+const catCanvas     = $('cat');
+const buttons       = $('buttons');
+const yesBtn        = $('yesBtn');
+const noBtn         = $('noBtn');
+const finalText     = $('final');
+const closeBtn      = $('closeBtn');
+const confettiBox   = $('confetti');
+const rainBox       = $('rain');
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ============================================================
-   PIXEL CAT SPRITES
-   ============================================================ */
 const PAL = {
-  k: '#221d1c', w: '#fdfdfd', p: '#15110f',
-  r: '#e23b4e', d: '#b22a3b', n: '#ff8fa3', c: '#ffb3c1',
+  k: '#221d1c',
+  w: '#fdfdfd',
+  p: '#15110f',
+  r: '#e23b4e',
+  d: '#b22a3b',
+  n: '#ff8fa3',
+  c: '#ffb3c1',
 };
 
 const CAT_IDLE = [
@@ -51,6 +40,25 @@ const CAT_IDLE = [
   'kwwwwkkkkkkwwwwk',
   'kwppwkkkkkkwppwk',
   'kwppwkkkkkkwppwk',
+  'kcckkkknnkkkkcck',
+  '.kkkkkkkkkkkkkk.',
+  'kkkkkkrrkrrkkkkk',
+  'kkkkkrrrrrrrkkkk',
+  'kkkkkrrrrrrrkkkk',
+  '.kkkkkrrrrrkkkk.',
+  '..kkkkkrrrkkkk..',
+  '....kk..r.kk....',
+  '................',
+];
+
+const CAT_HAPPY = [
+  '..k..........k..',
+  '.kkk........kkk.',
+  'kkkk........kkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kwkkwkkkkkkwkkwk',
+  'kkwwkkkkkkkkwwkk',
   'kcckkkknnkkkkcck',
   '.kkkkkkkkkkkkkk.',
   'kkkkkkrrkrrkkkkk',
@@ -81,68 +89,9 @@ const CAT_BLINK = [
   '................',
 ];
 
-const CAT_HAPPY_A = [ // squinty ^^ + open smile
-  '..k..........k..',
-  '.kkk........kkk.',
-  'kkkk........kkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kwkkwkkkkkkwkkwk',
-  'kkwwkkkkkkkkwwkk',
-  'kcckkkknnkkkkcck',
-  '.kkkkkkddkkkkkk.',
-  'kkkkkkrrkrrkkkkk',
-  'kkkkkrrrrrrrkkkk',
-  'kkkkkrrrrrrrkkkk',
-  '.kkkkkrrrrrkkkk.',
-  '..kkkkkrrrkkkk..',
-  '....kk..r.kk....',
-  '................',
-];
-
-const CAT_HAPPY_B = [ // wide sparkle eyes
-  '..k..........k..',
-  '.kkk........kkk.',
-  'kkkk........kkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kwppwkkkkkkwppwk',
-  'kwppwkkkkkkwppwk',
-  'kcckkkknnkkkkcck',
-  '.kkkkkkddkkkkkk.',
-  'kkkkkkrrkrrkkkkk',
-  'kkkkkrrrrrrrkkkk',
-  'kkkkkrrrrrrrkkkk',
-  '.kkkkkrrrrrkkkk.',
-  '..kkkkkrrrkkkk..',
-  '....kk..r.kk....',
-  '................',
-];
-
-const CAT_LOVE = [ // heart eyes
-  '..k..........k..',
-  '.kkk........kkk.',
-  'kkkk........kkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kkkkkkkkkkkkkkkk',
-  'krrkkkkkkkkkkrrk',
-  'krrkkkkkkkkkkrrk',
-  'kcckkkknnkkkkcck',
-  '.kkkkkkddkkkkkk.',
-  'kkkkkkrrkrrkkkkk',
-  'kkkkkrrrrrrrkkkk',
-  'kkkkkrrrrrrrkkkk',
-  '.kkkkkrrrrrkkkk.',
-  '..kkkkkrrrkkkk..',
-  '....kk..r.kk....',
-  '................',
-];
-
 function drawSprite(canvas, rows){
   const h = rows.length, w = rows[0].length;
-  if (canvas.width !== w || canvas.height !== h){
-    canvas.width = w; canvas.height = h;
-  }
+  canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, w, h);
   for (let y = 0; y < h; y++){
@@ -154,12 +103,9 @@ function drawSprite(canvas, rows){
   }
 }
 
-/* ============================================================
-   AMBIENT CONFETTI (background hearts)
-   ============================================================ */
 const CONFETTI_COLORS = ['#e8546a', '#f08aa0', '#d83a52', '#f6b3c2', '#c83048'];
-const PARALLAX = [];
 
+const PARALLAX = [];
 function spawnConfetti(scale = 1){
   const LAYERS = [
     { n: 22, factor: 7,  min: 5,  max: 9,  blur: 1.6, op: .5 },
@@ -198,14 +144,11 @@ function applyParallax(){
   target.style.transform = `translateX(-50%) translate(${pX * 12}px, ${pY * 9}px)`;
 }
 function onParallax(e){
-  pX = (e.clientX / innerWidth  - .5) * 2;
-  pY = (e.clientY / innerHeight - .5) * 2;
+  pX = (e.clientX / window.innerWidth  - .5) * 2;
+  pY = (e.clientY / window.innerHeight - .5) * 2;
   if (!parallaxRAF) parallaxRAF = requestAnimationFrame(applyParallax);
 }
 
-/* ============================================================
-   LETTER WINDOW
-   ============================================================ */
 function openLetter(){
   aimStage.classList.add('is-gone');
   win.classList.add('is-open');
@@ -221,28 +164,24 @@ function closeLetter(){
   resetAim();
   setTimeout(() => aimStage.focus({ preventScroll: true }), reduceMotion ? 0 : 420);
 }
+
 closeBtn.addEventListener('click', closeLetter);
 
-/* ============================================================
-   BOW & ARROW — CORE
-   ============================================================ */
-const DEFAULT_HINT = 'Hold to draw the bow — release to shoot ♡';
-const MISS_HINTS   = ['So close — try again ♡', 'Aim for the heart ♡', 'Cupid never misses twice ♡'];
+const DEFAULT_HINT = 'پەنجەت دابگرە بۆ ڕاکێشانی کەوانەکە — بەرەڵای بکە بۆ پێکانی دڵم ♡';
+const MISS_HINTS = ['زۆر نزیک بوویت — دووبارە هەوڵبدەرەوە گیانەکەم ♡', 'نیشانە ڕاستەوخۆ لە ناوەڕاستی دڵم بگرە ♡', 'تیری عەشقەکەمان نابێت هەرگیز هەڵە بکات ♡'];
+const ARROW_LEN  = 56;
 
-const ARROW_LEN  = 58;
-const MIN_DRAW   = 10;
-const MAX_DRAW   = 74;
-const DRAW_TIME  = 420;
-const BASE_SPEED = 9;
-const MAX_SPEED  = 18;
-const GRAVITY    = 0.028;
-const RECOIL_MS  = 280;
-const HIT_MARGIN = 20;
+const MIN_DRAW   = 6;
+const MAX_DRAW   = 34;
+const DRAW_TIME  = 380;
+const FLEX       = 0.12;
+const BASE_SPEED = 8.5;
+const MAX_SPEED  = 17;
+const GRAVITY    = 0.03;
+const RECOIL_MS  = 220;
+const HIT_MARGIN = 22;
 
-/* Bow geometry (SVG user units) */
-const TIP_Y      = 76;   // half-height of the bow (string anchors)
-const BULGE_REST = 40;   // how far the limbs bow out at rest
-const BULGE_PULL = 54;   // how far they bow at full draw
+function restAngle(m){ return clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx)); }
 
 let angle = -Math.PI / 2;
 let aiming = false;
@@ -252,40 +191,6 @@ let drawn = 0;
 let rafId = 0;
 let drawRAF = 0;
 let drawStartT = 0;
-
-let lastDeg = null;
-let lastPull = null;
-
-/* Rotate the <g> and update the limb + string paths */
-function setBow(deg, pull){
-  if (deg !== lastDeg){
-    bowRot.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
-    lastDeg = deg;
-  }
-
-  // Allow small negative pull so the string snaps past rest on release
-  const p = Math.max(-MAX_DRAW * 0.30, Math.min(MAX_DRAW * 1.05, pull));
-  if (lastPull !== null && Math.abs(p - lastPull) < 0.06) return;
-  lastPull = p;
-
-  const t     = Math.max(0, Math.min(1, p / MAX_DRAW));
-  const bulge = BULGE_REST + (BULGE_PULL - BULGE_REST) * t;
-  const tipX  = -t * 6;          // tips drift slightly back at full draw
-  const tipY  = TIP_Y - t * 1.5;
-  const pullX = -p;              // string pulled toward the archer
-
-  bowLimb.setAttribute('d',
-    `M${tipX.toFixed(2)} ${(-tipY).toFixed(2)}` +
-    `Q${bulge.toFixed(2)} ${(-tipY * 0.55).toFixed(2)} ${bulge.toFixed(2)} 0` +
-    `Q${bulge.toFixed(2)} ${( tipY * 0.55).toFixed(2)} ${tipX.toFixed(2)} ${tipY.toFixed(2)}`
-  );
-  bowString.setAttribute('d',
-    `M${tipX.toFixed(2)} ${(-tipY).toFixed(2)}` +
-    `L${pullX.toFixed(2)} 0` +
-    `L${tipX.toFixed(2)} ${tipY.toFixed(2)}`
-  );
-  bowGrip.setAttribute('x', (bulge - 9).toFixed(2));
-}
 
 function metrics(){
   const s = aimStage.getBoundingClientRect();
@@ -308,19 +213,17 @@ function clampAngle(a){
   return d * Math.PI / 180;
 }
 
-function restAngle(m){
-  return clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx));
+function renderBow(deg, flex){
+  bow.style.transform = `rotate(${deg}deg) scaleX(${flex})`;
 }
 
 function renderAim(m){
   const deg = angle * 180 / Math.PI;
-  setBow(deg, drawn);
-
+  renderBow(deg, 1 + (drawn / MAX_DRAW) * FLEX);
   const tx = m.nx - Math.cos(angle) * drawn;
   const ty = m.ny - Math.sin(angle) * drawn;
-  arrowEl.style.transform = `translate(${tx}px, ${ty}px) rotate(${deg}deg)`;
-  arrowEl.classList.add('is-on');
-  arrowEl.classList.toggle('is-charged', drawn > MAX_DRAW * 0.72);
+  arrow.style.transform = `translate(${tx}px, ${ty}px) rotate(${deg}deg)`;
+  arrow.classList.add('is-on');
 }
 
 function updateAim(clientX, clientY){
@@ -336,14 +239,13 @@ function startDraw(){
   drawStartT = performance.now();
   if (!drawRAF) drawRAF = requestAnimationFrame(drawStep);
 }
-
 function drawStep(now){
   drawRAF = 0;
   if (!aiming || flying) return;
   const t = Math.min(1, (now - drawStartT) / DRAW_TIME);
-  const eased = 1 - Math.pow(1 - t, 2.4);
+  const eased = 1 - Math.pow(1 - t, 2.2);
   drawn = MIN_DRAW + (MAX_DRAW - MIN_DRAW) * eased;
-  if (t > 0.78) drawn += Math.sin(now / 34) * 1.0;   // tremor at full draw
+  if (t > 0.8) drawn += Math.sin(now / 38) * 0.7;
   renderAim(metrics());
   drawRAF = requestAnimationFrame(drawStep);
 }
@@ -363,43 +265,39 @@ function fire(power){
 
   const m = metrics();
   const launchDraw = drawn;
+  const startFlex  = 1 + (launchDraw / MAX_DRAW) * FLEX;
   drawn = 0;
 
   if (reduceMotion){
-    setBow(angle * 180 / Math.PI, 0);
+    renderBow(angle * 180 / Math.PI, 1);
     onHit(m);
     return;
   }
 
   const speed = BASE_SPEED + power * (MAX_SPEED - BASE_SPEED);
-  let vx = Math.cos(angle) * speed;
-  let vy = Math.sin(angle) * speed;
+  let vx = Math.cos(angle) * speed, vy = Math.sin(angle) * speed;
   let tx = m.nx - Math.cos(angle) * launchDraw;
   let ty = m.ny - Math.sin(angle) * launchDraw;
-
   const margin = HIT_MARGIN + missCount * 12;
   const t0 = performance.now();
   let frame = 0;
 
   function step(now){
     const bt = Math.min(1, (now - t0) / RECOIL_MS);
-    const pull = launchDraw * Math.exp(-bt * 4.2) * Math.cos(bt * Math.PI * 2.6);
-    setBow(angle * 180 / Math.PI, pull);
+    const flex = 1 + (startFlex - 1) * Math.cos(bt * Math.PI * 1.5) * (1 - bt);
+    renderBow(angle * 180 / Math.PI, Math.max(0.9, flex));
 
     vy += GRAVITY;
     tx += vx; ty += vy;
     const dir = Math.atan2(vy, vx);
     const cos = Math.cos(dir), sin = Math.sin(dir);
-    arrowEl.style.transform = `translate(${tx}px, ${ty}px) rotate(${dir * 180 / Math.PI}deg)`;
-    arrowEl.classList.remove('is-charged');
-
+    arrow.style.transform = `translate(${tx}px, ${ty}px) rotate(${dir * 180 / Math.PI}deg)`;
     const tipx = tx + cos * ARROW_LEN;
     const tipy = ty + sin * ARROW_LEN;
 
     if ((frame++ & 1) === 0){
       spawnTrail(tx + cos * ARROW_LEN * 0.5, ty + sin * ARROW_LEN * 0.5);
     }
-
     if (Math.abs(tipx - m.tx) <= m.thw + margin &&
         Math.abs(tipy - m.ty) <= m.thh + margin){
       onHit(m, dir); return;
@@ -417,9 +315,9 @@ function clamp01(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
 function spawnTrail(x, y){
   const t = document.createElement('span');
   t.className = 'heart trail';
-  t.style.left = (x - 5) + 'px';
-  t.style.top  = (y - 5) + 'px';
-  t.style.background = '#ffc2d1';
+  t.style.left = (x - 5.5) + 'px';
+  t.style.top  = (y - 5.5) + 'px';
+  t.style.background = '#f4a9b8';
   t.addEventListener('animationend', () => t.remove());
   aimStage.appendChild(t);
 }
@@ -431,24 +329,17 @@ function onHit(m, dir){
   const deg = a * 180 / Math.PI;
   const tailx = m.tx - Math.cos(a) * ARROW_LEN;
   const taily = m.ty - Math.sin(a) * ARROW_LEN;
-  arrowEl.style.transform = `translate(${tailx}px, ${taily}px) rotate(${deg}deg)`;
-  arrowEl.classList.remove('is-charged');
+  arrow.style.transform = `translate(${tailx}px, ${taily}px) rotate(${deg}deg)`;
   target.classList.add('is-hit');
   target.classList.remove('is-pulse');
-
-  if (!reduceMotion){
-    spawnBurst(aimStage, m.tx, m.ty, 26);
-    showImpact(m.tx, m.ty);
-    flashScreen();
-    shakeScene();
-  }
-  setTimeout(openLetter, reduceMotion ? 0 : 500);
+  if (!reduceMotion) spawnBurst(aimStage, m.tx, m.ty, 18);
+  setTimeout(openLetter, reduceMotion ? 0 : 470);
 }
 
 function onMiss(){
   cancelAnimationFrame(rafId);
   flying = false; drawn = 0;
-  arrowEl.classList.remove('is-on', 'is-charged');
+  arrow.classList.remove('is-on');
   hintText.textContent = MISS_HINTS[Math.min(missCount, MISS_HINTS.length - 1)];
   missCount++;
   if (missCount >= 2) target.classList.add('is-pulse');
@@ -471,46 +362,17 @@ function resetAim(){
   renderAim(m);
 }
 
-/* ---------- Visual feedback ---------- */
-function shakeScene(){
-  sceneEl.classList.remove('is-shaking');
-  void sceneEl.offsetWidth;    // force reflow
-  sceneEl.classList.add('is-shaking');
-  setTimeout(() => sceneEl.classList.remove('is-shaking'), 520);
-}
-
-function flashScreen(){
-  flashEl.classList.remove('is-on');
-  void flashEl.offsetWidth;
-  flashEl.classList.add('is-on');
-  setTimeout(() => flashEl.classList.remove('is-on'), 480);
-}
-
-function showImpact(x, y){
-  impactEl.style.left = x + 'px';
-  impactEl.style.top  = y + 'px';
-  impactEl.classList.remove('is-on');
-  void impactEl.offsetWidth;
-  impactEl.classList.add('is-on');
-  setTimeout(() => impactEl.classList.remove('is-on'), 600);
-}
-
-/* ---------- Input ---------- */
-aimStage.addEventListener('pointermove', e => {
-  if (!flying) updateAim(e.clientX, e.clientY);
-});
-
-aimStage.addEventListener('pointerdown', e => {
+aimStage.addEventListener('pointermove', (e) => { if (!flying) updateAim(e.clientX, e.clientY); });
+aimStage.addEventListener('pointerdown', (e) => {
   if (flying) return;
   const m = metrics();
   angle = clampAngle(Math.atan2(e.clientY - m.top - m.ny, e.clientX - m.left - m.nx));
   aiming = true;
   startDraw();
 });
-
 window.addEventListener('pointerup', release);
 
-aimStage.addEventListener('keydown', e => {
+aimStage.addEventListener('keydown', (e) => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
   e.preventDefault();
   if (flying || aiming) return;
@@ -523,23 +385,22 @@ aimStage.addEventListener('keydown', e => {
 
 window.addEventListener('resize', () => { if (!flying) renderAim(metrics()); });
 
-/* ============================================================
-   LETTER INTERACTION (YES / NO)
-   ============================================================ */
 let yesScale = 1;
 let catState = 'idle';
-let happyTimer = 0;
 
 function dodge(e){
-  if (e) e.preventDefault();
+  if (e){ e.preventDefault(); }
+
   const area = content.getBoundingClientRect();
   const b = noBtn.getBoundingClientRect();
   const pad = 10;
 
   if (getComputedStyle(noBtn).position !== 'absolute'){
+    const startX = b.left - area.left;
+    const startY = b.top  - area.top;
     noBtn.style.position = 'absolute';
-    noBtn.style.left = (b.left - area.left) + 'px';
-    noBtn.style.top  = (b.top  - area.top ) + 'px';
+    noBtn.style.left = startX + 'px';
+    noBtn.style.top  = startY + 'px';
   }
 
   const y = yesBtn.getBoundingClientRect();
@@ -571,25 +432,11 @@ noBtn.addEventListener('pointerdown', dodge);
 noBtn.addEventListener('click', dodge);
 noBtn.addEventListener('focus', dodge);
 
-function startHappyLoop(){
-  if (reduceMotion || happyTimer) return;
-  const frames = [CAT_HAPPY_A, CAT_HAPPY_B, CAT_HAPPY_A, CAT_LOVE];
-  let i = 0;
-  drawSprite(catCanvas, frames[i]);
-  happyTimer = setInterval(() => {
-    i = (i + 1) % frames.length;
-    drawSprite(catCanvas, frames[i]);
-  }, 280);
-}
-function stopHappyLoop(){
-  clearInterval(happyTimer);
-  happyTimer = 0;
-}
-
 function sayYes(){
   catState = 'happy';
-  titleEl.textContent = 'Yayyy! I love you ♡';
-  catCanvas.setAttribute('aria-label', 'A happy jumping cat');
+  title.textContent = 'قوربانت بم! منیش بێ سنوور ئاشقتم ♡';
+  drawSprite(catCanvas, CAT_HAPPY);
+  catCanvas.setAttribute('aria-label', 'پشیلەیەکی دڵخۆش بە کەوانەیەکەوە');
 
   buttons.hidden = true;
   finalText.hidden = false;
@@ -604,17 +451,11 @@ function sayYes(){
 
   content.classList.add('is-won');
   win.classList.add('is-celebrate');
-
-  startHappyLoop();
-
-  if (!reduceMotion){
-    heartBurst();
-    celebrate();
-  }
+  if (!reduceMotion){ heartBurst(); celebrate(); }
 }
+
 yesBtn.addEventListener('click', sayYes);
 
-/* ---------- Heart burst ---------- */
 function spawnBurst(parent, cx, cy, n = 18){
   for (let i = 0; i < n; i++){
     const h = document.createElement('span');
@@ -624,8 +465,8 @@ function spawnBurst(parent, cx, cy, n = 18){
     h.style.left = (cx - size / 2) + 'px';
     h.style.top  = (cy - size / 2) + 'px';
     h.style.background = CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0];
-    const ang  = Math.random() * Math.PI * 2;
-    const dist = 70 + Math.random() * 120;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 110;
     h.style.setProperty('--bx', Math.cos(ang) * dist + 'px');
     h.style.setProperty('--by', (Math.sin(ang) * dist - 40) + 'px');
     h.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
@@ -634,27 +475,21 @@ function spawnBurst(parent, cx, cy, n = 18){
   }
 }
 
-function heartBurst(n = 24){
-  spawnBurst(
-    content,
+function heartBurst(n = 22){
+  spawnBurst(content,
     catCanvas.offsetLeft + catCanvas.offsetWidth / 2,
-    catCanvas.offsetTop  + catCanvas.offsetHeight / 2,
-    n
-  );
+    catCanvas.offsetTop  + catCanvas.offsetHeight / 2, n);
 }
 
-/* ============================================================
-   CONFETTI RAIN (celebration)
-   ============================================================ */
 const LOVE_COLORS = [
   '#e8546a', '#ff5d8f', '#d83a52', '#f08aa0', '#ff8fab',
   '#c83048', '#ff7eb3', '#c79bff', '#ff9e6b', '#ffd56b', '#f6b3c2',
 ];
 const rand = (a, b) => a + Math.random() * (b - a);
-const pick = arr => arr[(Math.random() * arr.length) | 0];
+const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 
-const GRAVITY_C = 0.20;
-const DRAG_C    = 0.993;
+const GRAVITY_C   = 0.20;
+const DRAG_C      = 0.993;
 
 const confetti = [];
 let confettiRAF = 0;
@@ -667,19 +502,7 @@ function addConfetti(x, y, vx, vy, size){
   el.style.width = el.style.height = size.toFixed(0) + 'px';
   el.style.background = pick(LOVE_COLORS);
   rainBox.appendChild(el);
-  confetti.push({
-    el, x, y, vx, vy,
-    rot: rand(0, 360), vrot: rand(-7, 7),
-    age: 0, life: rand(2.6, 3.6),
-  });
-}
-
-function popper(x, y, ang, n){
-  for (let i = 0; i < n; i++){
-    const a  = ang + rand(-0.42, 0.42);
-    const sp = rand(14, 21) * confScale;
-    addConfetti(x, y, Math.cos(a) * sp, Math.sin(a) * sp, rand(48, 96) * confScale);
-  }
+  confetti.push({ el, x, y, vx, vy, rot: rand(0, 360), vrot: rand(-7, 7), age: 0, life: rand(2.6, 3.6) });
 }
 
 function confettiBurst(){
@@ -688,6 +511,14 @@ function confettiBurst(){
   popper(-14,    H + 14, -Math.PI * 0.34, n);
   popper(W + 14, H + 14, -Math.PI * 0.66, n);
   popper(W / 2,  H + 14, -Math.PI * 0.50, n);
+}
+
+function popper(x, y, ang, n){
+  for (let i = 0; i < n; i++){
+    const a  = ang + rand(-0.42, 0.42);
+    const sp = rand(14, 21) * confScale;
+    addConfetti(x, y, Math.cos(a) * sp, Math.sin(a) * sp, rand(48, 96) * confScale);
+  }
 }
 
 function confettiTick(){
@@ -700,8 +531,7 @@ function confettiTick(){
     p.x += p.vx; p.y += p.vy; p.rot += p.vrot; p.age += 1 / 60;
     const o = p.age < 0.1 ? p.age / 0.1 : Math.max(0, 1 - (p.age - 0.1) / p.life);
     p.el.style.opacity = o.toFixed(2);
-    p.el.style.transform =
-      `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot | 0}deg)`;
+    p.el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot | 0}deg)`;
     if (o <= 0 || p.y > H + 120){ p.el.remove(); confetti.splice(i, 1); }
   }
   if (confetti.length) confettiRAF = requestAnimationFrame(confettiTick);
@@ -726,9 +556,6 @@ function stopCelebrate(){
   confetti.length = 0;
 }
 
-/* ============================================================
-   RESET / IDLE
-   ============================================================ */
 function blink(){
   if (catState !== 'idle') return;
   drawSprite(catCanvas, CAT_BLINK);
@@ -737,16 +564,15 @@ function blink(){
 
 function reset(){
   catState = 'idle';
-  stopHappyLoop();
-  titleEl.textContent = 'Happy 1 month, my love ♡ Still love me?';
+  title.textContent = 'یادی یەک مانگەی پێکەوەبوونمان پیرۆز تاقانەکەم ♡ هێشتا منت خۆش دەوێت؟';
   drawSprite(catCanvas, CAT_IDLE);
-  catCanvas.setAttribute('aria-label', 'A little cat');
+  catCanvas.setAttribute('aria-label', 'پشیلەیەکی بچووک دڵێکی گرتووە');
   buttons.hidden = false;
   finalText.hidden = true;
   finalText.classList.remove('is-show');
   content.classList.remove('is-won');
   win.classList.remove('is-celebrate');
-  content.querySelectorAll('.cat-heart, .burst').forEach(el => el.remove());
+  content.querySelectorAll('.cat-heart, .burst').forEach((el) => el.remove());
   stopCelebrate();
   rainBox.replaceChildren();
   yesScale = 1;
@@ -757,9 +583,6 @@ function reset(){
   noBtn.style.top = '';
 }
 
-/* ============================================================
-   BOOT
-   ============================================================ */
 drawSprite(catCanvas, CAT_IDLE);
 spawnConfetti(reduceMotion ? 0.5 : 1);
 
@@ -768,17 +591,11 @@ if (!reduceMotion){
   setInterval(blink, 3600);
 }
 
-function layoutAim(){
-  if (flying) return;
-  const m = metrics();
-  angle = restAngle(m);
-  renderAim(m);
-}
+function layoutAim(){ if (flying) return; const m = metrics(); angle = restAngle(m); renderAim(m); }
 requestAnimationFrame(layoutAim);
 window.addEventListener('load', layoutAim);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutAim);
 
-/* ---------- Test hook ---------- */
 if (new URLSearchParams(location.search).has('record')){
   window.loveAPI = {
     aimUp(){ const m = metrics(); angle = clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx)); renderAim(m); },
@@ -786,8 +603,9 @@ if (new URLSearchParams(location.search).has('record')){
     release(){ fire(); },
     shoot(){ if (flying) return; this.aimUp(); drawn = MAX_DRAW; renderAim(metrics()); fire(); },
     open: openLetter,
-    yes: sayYes,
-    dodge, reset,
+    yes:  sayYes,
+    dodge,
+    reset,
     els: { noBtn, yesBtn, content, aimStage, win, nock: nockEl },
   };
 }
