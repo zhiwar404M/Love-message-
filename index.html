@@ -4,28 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Happy 1 Month ♡ — Love Letter</title>
-  <meta name="description" content="A cute interactive pixel-art love letter celebrating one month of marriage. Open the envelope and answer the question." />
-  <link rel="icon" type="image/png" href="./favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script>document.documentElement.classList.add('js')</script>
   <link rel="stylesheet" href="./love.css" />
 </head>
 <body>
   <div class="fx" aria-hidden="true">
     <div class="fx__aurora"></div>
     <div class="fx__vignette"></div>
-    <div class="fx__grain"></div>
   </div>
 
+  <div class="flash" id="flash" aria-hidden="true"></div>
   <div class="rain" id="rain" aria-hidden="true"></div>
 
-  <main class="scene">
+  <main class="scene" id="scene">
     <div class="confetti" id="confetti" aria-hidden="true"></div>
 
     <div class="stage stage--aim" id="aimStage" tabindex="0" role="application"
-         aria-label="Aim and shoot Cupid's arrow at the letter to open it. Press space to shoot.">
+         aria-label="Aim and shoot Cupid's arrow at the letter to open it.">
 
       <div class="target" id="target">
         <div class="envelope" aria-hidden="true">
@@ -39,28 +36,54 @@
         </p>
       </div>
 
-      <div class="arrow" id="arrow" aria-hidden="true"></div>
+      <!-- Arrow (drawn as HTML element) -->
+      <div class="arrow" id="arrow" aria-hidden="true">
+        <span class="arrow__shaft"></span>
+        <span class="arrow__head"></span>
+        <span class="arrow__fletch"></span>
+      </div>
 
-      <div class="archer" id="archer" aria-hidden="true">
-        <svg class="bow" id="bow" viewBox="-90 -90 180 180" aria-hidden="true">
+      <!-- Archer + real SVG bow -->
+      <div class="archer" aria-hidden="true">
+        <svg class="bow" viewBox="-90 -90 180 180" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="bowWood" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0"   stop-color="#7a4a1e"/>
-              <stop offset="0.5" stop-color="#d09454"/>
-              <stop offset="1"   stop-color="#7a4a1e"/>
+              <stop offset="0"    stop-color="#6b3f16"/>
+              <stop offset="0.5"  stop-color="#e0a35a"/>
+              <stop offset="1"    stop-color="#6b3f16"/>
             </linearGradient>
+            <linearGradient id="stringGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0"   stop-color="#f7ecd8"/>
+              <stop offset="0.5" stop-color="#ffffff"/>
+              <stop offset="1"   stop-color="#f7ecd8"/>
+            </linearGradient>
+            <filter id="bowGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
           </defs>
-          <path class="bow__limb"   id="bowLimb"   d=""/>
-          <path class="bow__string" id="bowString" d=""/>
-          <rect class="bow__grip"   id="bowGrip"   x="31" y="-16" width="18" height="32" rx="6"/>
+
+          <g id="bowRot">
+            <!-- Bow limb (curved wooden part) -->
+            <path id="bowLimb" class="bow__limb" d="M0 -76 Q40 -40 40 0 Q40 40 0 76" />
+            <!-- Bow string -->
+            <path id="bowString" class="bow__string" d="M0 -76 L0 0 L0 76" />
+            <!-- Grip -->
+            <rect id="bowGrip" class="bow__grip" x="31" y="-16" width="18" height="32" rx="7" />
+            <!-- Hand holding the grip -->
+            <ellipse class="bow__hand" cx="40" cy="0" rx="11" ry="15" />
+            <ellipse class="bow__hand2" cx="40" cy="0" rx="7" ry="10" />
+          </g>
         </svg>
         <span class="nock" id="nock"></span>
       </div>
 
       <p class="hint" id="hint">
-        <span id="hintText">Aim &amp; release to shoot Cupid&rsquo;s arrow</span>
+        <span id="hintText">Hold to draw the bow — release to shoot ♡</span>
         <span class="heart heart--inline"></span>
       </p>
+
+      <div class="impact" id="impact" aria-hidden="true"></div>
     </div>
 
     <section class="window" id="window" aria-hidden="true">
@@ -81,7 +104,7 @@
 
       <div class="content" id="content">
         <h1 class="title" id="title">Happy 1 month, my love ♡ Still love me?</h1>
-        <canvas class="cat" id="cat" width="16" height="16" aria-label="A little cat holding a heart" role="img"></canvas>
+        <canvas class="cat" id="cat" width="16" height="16" aria-label="A little cat" role="img"></canvas>
         <div class="buttons" id="buttons">
           <button class="btn btn--yes" type="button" id="yesBtn">YES</button>
           <button class="btn btn--no"  type="button" id="noBtn">NO</button>
