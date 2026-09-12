@@ -1,47 +1,48 @@
 /* ============================================================
-   LOVE — an interactive pixel-art love letter
-   Bow now uses a real SVG string + bending limbs
-   Cat now has multi-frame happy / in-love animations
+   LOVE — interactive pixel-art love letter
+   • Real SVG bow with bending limbs + snapping string
+   • Rotating <g> element (bulletproof across browsers)
+   • Screen shake + flash + impact ring on hit
+   • Cat with 4 happy frames + squash-and-stretch jump
    ============================================================ */
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const aimStage    = $('aimStage');
-const target      = $('target');
-const targetEnv   = target.querySelector('.envelope');
-const arrow       = $('arrow');
-const bowEl       = $('bow');
-const bowLimb     = $('bowLimb');
-const bowString   = $('bowString');
-const bowGrip     = $('bowGrip');
-const nockEl      = $('nock');
-const hintText    = $('hintText');
-const win         = $('window');
-const content     = $('content');
-const title       = $('title');
-const catCanvas   = $('cat');
-const buttons     = $('buttons');
-const yesBtn      = $('yesBtn');
-const noBtn       = $('noBtn');
-const finalText   = $('final');
-const closeBtn    = $('closeBtn');
-const confettiBox = $('confetti');
-const rainBox     = $('rain');
+const aimStage   = $('aimStage');
+const target     = $('target');
+const targetEnv  = target.querySelector('.envelope');
+const arrowEl    = $('arrow');
+const bowRot     = $('bowRot');
+const bowLimb    = $('bowLimb');
+const bowString  = $('bowString');
+const bowGrip    = $('bowGrip');
+const nockEl     = $('nock');
+const hintText   = $('hintText');
+const win        = $('window');
+const content    = $('content');
+const titleEl    = $('title');
+const catCanvas  = $('cat');
+const buttons    = $('buttons');
+const yesBtn     = $('yesBtn');
+const noBtn      = $('noBtn');
+const finalText  = $('final');
+const closeBtn   = $('closeBtn');
+const confettiBox= $('confetti');
+const rainBox    = $('rain');
+const sceneEl    = $('scene');
+const flashEl    = $('flash');
+const impactEl   = $('impact');
 
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------------- Pixel palette ---------------- */
+/* ============================================================
+   PIXEL CAT SPRITES
+   ============================================================ */
 const PAL = {
-  k: '#221d1c', // outline / fur
-  w: '#fdfdfd', // eye white
-  p: '#15110f', // pupil
-  r: '#e23b4e', // heart red
-  d: '#b22a3b', // dark red (mouth)
-  n: '#ff8fa3', // nose pink
-  c: '#ffb3c1', // blush
+  k: '#221d1c', w: '#fdfdfd', p: '#15110f',
+  r: '#e23b4e', d: '#b22a3b', n: '#ff8fa3', c: '#ffb3c1',
 };
 
-/* ---------------- Cat sprites ---------------- */
 const CAT_IDLE = [
   '..k..........k..',
   '.kkk........kkk.',
@@ -80,8 +81,7 @@ const CAT_BLINK = [
   '................',
 ];
 
-/* Squinty happy eyes ^^ + open smile */
-const CAT_HAPPY_A = [
+const CAT_HAPPY_A = [ // squinty ^^ + open smile
   '..k..........k..',
   '.kkk........kkk.',
   'kkkk........kkkk',
@@ -100,8 +100,7 @@ const CAT_HAPPY_A = [
   '................',
 ];
 
-/* Wide sparkly eyes — used for the "bounce" beat */
-const CAT_HAPPY_B = [
+const CAT_HAPPY_B = [ // wide sparkle eyes
   '..k..........k..',
   '.kkk........kkk.',
   'kkkk........kkkk',
@@ -120,8 +119,7 @@ const CAT_HAPPY_B = [
   '................',
 ];
 
-/* Heart eyes — the "in love" beat */
-const CAT_LOVE = [
+const CAT_LOVE = [ // heart eyes
   '..k..........k..',
   '.kkk........kkk.',
   'kkkk........kkkk',
@@ -156,7 +154,9 @@ function drawSprite(canvas, rows){
   }
 }
 
-/* ---------------- Ambient confetti ---------------- */
+/* ============================================================
+   AMBIENT CONFETTI (background hearts)
+   ============================================================ */
 const CONFETTI_COLORS = ['#e8546a', '#f08aa0', '#d83a52', '#f6b3c2', '#c83048'];
 const PARALLAX = [];
 
@@ -203,7 +203,9 @@ function onParallax(e){
   if (!parallaxRAF) parallaxRAF = requestAnimationFrame(applyParallax);
 }
 
-/* ---------------- Letter window ---------------- */
+/* ============================================================
+   LETTER WINDOW
+   ============================================================ */
 function openLetter(){
   aimStage.classList.add('is-gone');
   win.classList.add('is-open');
@@ -222,54 +224,55 @@ function closeLetter(){
 closeBtn.addEventListener('click', closeLetter);
 
 /* ============================================================
-   BOW & ARROW
+   BOW & ARROW — CORE
    ============================================================ */
-
 const DEFAULT_HINT = 'Hold to draw the bow — release to shoot ♡';
 const MISS_HINTS   = ['So close — try again ♡', 'Aim for the heart ♡', 'Cupid never misses twice ♡'];
 
-const ARROW_LEN  = 56;
-const MIN_DRAW   = 8;
-const MAX_DRAW   = 72;
+const ARROW_LEN  = 58;
+const MIN_DRAW   = 10;
+const MAX_DRAW   = 74;
 const DRAW_TIME  = 420;
-const BASE_SPEED = 8.5;
-const MAX_SPEED  = 17;
-const GRAVITY    = 0.03;
-const RECOIL_MS  = 260;
-const HIT_MARGIN = 22;
+const BASE_SPEED = 9;
+const MAX_SPEED  = 18;
+const GRAVITY    = 0.028;
+const RECOIL_MS  = 280;
+const HIT_MARGIN = 20;
 
-/* Bow geometry (SVG user units == px, viewBox is -90..90) */
-const BOW_TIP_Y   = 76;
-const BOW_BULGE_L = 40;   // limb bulge at rest
-const BOW_BULGE_H = 52;   // limb bulge at full draw
+/* Bow geometry (SVG user units) */
+const TIP_Y      = 76;   // half-height of the bow (string anchors)
+const BULGE_REST = 40;   // how far the limbs bow out at rest
+const BULGE_PULL = 54;   // how far they bow at full draw
 
-let angle     = -Math.PI / 2;
-let aiming    = false;
-let flying    = false;
+let angle = -Math.PI / 2;
+let aiming = false;
+let flying = false;
 let missCount = 0;
-let drawn     = 0;
-let rafId     = 0;
-let drawRAF   = 0;
+let drawn = 0;
+let rafId = 0;
+let drawRAF = 0;
 let drawStartT = 0;
 
-const bowState = { deg: null, pull: null };
+let lastDeg = null;
+let lastPull = null;
 
+/* Rotate the <g> and update the limb + string paths */
 function setBow(deg, pull){
-  if (deg !== bowState.deg){
-    bowEl.style.transform = `rotate(${deg.toFixed(2)}deg)`;
-    bowState.deg = deg;
+  if (deg !== lastDeg){
+    bowRot.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
+    lastDeg = deg;
   }
 
-  // allow a small negative pull so the string visibly snaps past rest
-  const p = Math.max(-MAX_DRAW * 0.28, Math.min(MAX_DRAW * 1.06, pull));
-  if (bowState.pull !== null && Math.abs(p - bowState.pull) < 0.08) return;
-  bowState.pull = p;
+  // Allow small negative pull so the string snaps past rest on release
+  const p = Math.max(-MAX_DRAW * 0.30, Math.min(MAX_DRAW * 1.05, pull));
+  if (lastPull !== null && Math.abs(p - lastPull) < 0.06) return;
+  lastPull = p;
 
-  const t = Math.max(0, Math.min(1, p / MAX_DRAW));
-  const bulge = BOW_BULGE_L + (BOW_BULGE_H - BOW_BULGE_L) * t;
-  const tipX  = -t * 7;
-  const tipY  = BOW_TIP_Y - t * 2;
-  const pullX = -p;
+  const t     = Math.max(0, Math.min(1, p / MAX_DRAW));
+  const bulge = BULGE_REST + (BULGE_PULL - BULGE_REST) * t;
+  const tipX  = -t * 6;          // tips drift slightly back at full draw
+  const tipY  = TIP_Y - t * 1.5;
+  const pullX = -p;              // string pulled toward the archer
 
   bowLimb.setAttribute('d',
     `M${tipX.toFixed(2)} ${(-tipY).toFixed(2)}` +
@@ -312,10 +315,12 @@ function restAngle(m){
 function renderAim(m){
   const deg = angle * 180 / Math.PI;
   setBow(deg, drawn);
+
   const tx = m.nx - Math.cos(angle) * drawn;
   const ty = m.ny - Math.sin(angle) * drawn;
-  arrow.style.transform = `translate(${tx}px, ${ty}px) rotate(${deg}deg)`;
-  arrow.classList.add('is-on');
+  arrowEl.style.transform = `translate(${tx}px, ${ty}px) rotate(${deg}deg)`;
+  arrowEl.classList.add('is-on');
+  arrowEl.classList.toggle('is-charged', drawn > MAX_DRAW * 0.72);
 }
 
 function updateAim(clientX, clientY){
@@ -338,8 +343,7 @@ function drawStep(now){
   const t = Math.min(1, (now - drawStartT) / DRAW_TIME);
   const eased = 1 - Math.pow(1 - t, 2.4);
   drawn = MIN_DRAW + (MAX_DRAW - MIN_DRAW) * eased;
-  // subtle tension tremor near full draw
-  if (t > 0.78) drawn += Math.sin(now / 34) * 0.9;
+  if (t > 0.78) drawn += Math.sin(now / 34) * 1.0;   // tremor at full draw
   renderAim(metrics());
   drawRAF = requestAnimationFrame(drawStep);
 }
@@ -368,16 +372,17 @@ function fire(power){
   }
 
   const speed = BASE_SPEED + power * (MAX_SPEED - BASE_SPEED);
-  let vx = Math.cos(angle) * speed, vy = Math.sin(angle) * speed;
+  let vx = Math.cos(angle) * speed;
+  let vy = Math.sin(angle) * speed;
   let tx = m.nx - Math.cos(angle) * launchDraw;
   let ty = m.ny - Math.sin(angle) * launchDraw;
+
   const margin = HIT_MARGIN + missCount * 12;
   const t0 = performance.now();
   let frame = 0;
 
   function step(now){
     const bt = Math.min(1, (now - t0) / RECOIL_MS);
-    // damped oscillation → string snaps forward, wobbles, settles
     const pull = launchDraw * Math.exp(-bt * 4.2) * Math.cos(bt * Math.PI * 2.6);
     setBow(angle * 180 / Math.PI, pull);
 
@@ -385,13 +390,16 @@ function fire(power){
     tx += vx; ty += vy;
     const dir = Math.atan2(vy, vx);
     const cos = Math.cos(dir), sin = Math.sin(dir);
-    arrow.style.transform = `translate(${tx}px, ${ty}px) rotate(${dir * 180 / Math.PI}deg)`;
+    arrowEl.style.transform = `translate(${tx}px, ${ty}px) rotate(${dir * 180 / Math.PI}deg)`;
+    arrowEl.classList.remove('is-charged');
+
     const tipx = tx + cos * ARROW_LEN;
     const tipy = ty + sin * ARROW_LEN;
 
     if ((frame++ & 1) === 0){
       spawnTrail(tx + cos * ARROW_LEN * 0.5, ty + sin * ARROW_LEN * 0.5);
     }
+
     if (Math.abs(tipx - m.tx) <= m.thw + margin &&
         Math.abs(tipy - m.ty) <= m.thh + margin){
       onHit(m, dir); return;
@@ -409,9 +417,9 @@ function clamp01(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
 function spawnTrail(x, y){
   const t = document.createElement('span');
   t.className = 'heart trail';
-  t.style.left = (x - 5.5) + 'px';
-  t.style.top  = (y - 5.5) + 'px';
-  t.style.background = '#f4a9b8';
+  t.style.left = (x - 5) + 'px';
+  t.style.top  = (y - 5) + 'px';
+  t.style.background = '#ffc2d1';
   t.addEventListener('animationend', () => t.remove());
   aimStage.appendChild(t);
 }
@@ -423,17 +431,24 @@ function onHit(m, dir){
   const deg = a * 180 / Math.PI;
   const tailx = m.tx - Math.cos(a) * ARROW_LEN;
   const taily = m.ty - Math.sin(a) * ARROW_LEN;
-  arrow.style.transform = `translate(${tailx}px, ${taily}px) rotate(${deg}deg)`;
+  arrowEl.style.transform = `translate(${tailx}px, ${taily}px) rotate(${deg}deg)`;
+  arrowEl.classList.remove('is-charged');
   target.classList.add('is-hit');
   target.classList.remove('is-pulse');
-  if (!reduceMotion) spawnBurst(aimStage, m.tx, m.ty, 22);
-  setTimeout(openLetter, reduceMotion ? 0 : 470);
+
+  if (!reduceMotion){
+    spawnBurst(aimStage, m.tx, m.ty, 26);
+    showImpact(m.tx, m.ty);
+    flashScreen();
+    shakeScene();
+  }
+  setTimeout(openLetter, reduceMotion ? 0 : 500);
 }
 
 function onMiss(){
   cancelAnimationFrame(rafId);
   flying = false; drawn = 0;
-  arrow.classList.remove('is-on');
+  arrowEl.classList.remove('is-on', 'is-charged');
   hintText.textContent = MISS_HINTS[Math.min(missCount, MISS_HINTS.length - 1)];
   missCount++;
   if (missCount >= 2) target.classList.add('is-pulse');
@@ -456,10 +471,36 @@ function resetAim(){
   renderAim(m);
 }
 
-/* ---------------- Input ---------------- */
-aimStage.addEventListener('pointermove', (e) => { if (!flying) updateAim(e.clientX, e.clientY); });
+/* ---------- Visual feedback ---------- */
+function shakeScene(){
+  sceneEl.classList.remove('is-shaking');
+  void sceneEl.offsetWidth;    // force reflow
+  sceneEl.classList.add('is-shaking');
+  setTimeout(() => sceneEl.classList.remove('is-shaking'), 520);
+}
 
-aimStage.addEventListener('pointerdown', (e) => {
+function flashScreen(){
+  flashEl.classList.remove('is-on');
+  void flashEl.offsetWidth;
+  flashEl.classList.add('is-on');
+  setTimeout(() => flashEl.classList.remove('is-on'), 480);
+}
+
+function showImpact(x, y){
+  impactEl.style.left = x + 'px';
+  impactEl.style.top  = y + 'px';
+  impactEl.classList.remove('is-on');
+  void impactEl.offsetWidth;
+  impactEl.classList.add('is-on');
+  setTimeout(() => impactEl.classList.remove('is-on'), 600);
+}
+
+/* ---------- Input ---------- */
+aimStage.addEventListener('pointermove', e => {
+  if (!flying) updateAim(e.clientX, e.clientY);
+});
+
+aimStage.addEventListener('pointerdown', e => {
   if (flying) return;
   const m = metrics();
   angle = clampAngle(Math.atan2(e.clientY - m.top - m.ny, e.clientX - m.left - m.nx));
@@ -467,9 +508,9 @@ aimStage.addEventListener('pointerdown', (e) => {
   startDraw();
 });
 
-addEventListener('pointerup', release);
+window.addEventListener('pointerup', release);
 
-aimStage.addEventListener('keydown', (e) => {
+aimStage.addEventListener('keydown', e => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
   e.preventDefault();
   if (flying || aiming) return;
@@ -480,19 +521,17 @@ aimStage.addEventListener('keydown', (e) => {
   setTimeout(release, reduceMotion ? 0 : DRAW_TIME + 60);
 });
 
-addEventListener('resize', () => { if (!flying) renderAim(metrics()); });
+window.addEventListener('resize', () => { if (!flying) renderAim(metrics()); });
 
 /* ============================================================
-   LETTER CONTENT  (YES / NO + cat states)
+   LETTER INTERACTION (YES / NO)
    ============================================================ */
-
 let yesScale = 1;
 let catState = 'idle';
 let happyTimer = 0;
 
 function dodge(e){
   if (e) e.preventDefault();
-
   const area = content.getBoundingClientRect();
   const b = noBtn.getBoundingClientRect();
   const pad = 10;
@@ -540,7 +579,7 @@ function startHappyLoop(){
   happyTimer = setInterval(() => {
     i = (i + 1) % frames.length;
     drawSprite(catCanvas, frames[i]);
-  }, 300);
+  }, 280);
 }
 function stopHappyLoop(){
   clearInterval(happyTimer);
@@ -549,8 +588,8 @@ function stopHappyLoop(){
 
 function sayYes(){
   catState = 'happy';
-  title.textContent = 'Yayyy! I love you ♡';
-  catCanvas.setAttribute('aria-label', 'A happy bouncing cat');
+  titleEl.textContent = 'Yayyy! I love you ♡';
+  catCanvas.setAttribute('aria-label', 'A happy jumping cat');
 
   buttons.hidden = true;
   finalText.hidden = false;
@@ -573,10 +612,9 @@ function sayYes(){
     celebrate();
   }
 }
-
 yesBtn.addEventListener('click', sayYes);
 
-/* ---------------- Burst helpers ---------------- */
+/* ---------- Heart burst ---------- */
 function spawnBurst(parent, cx, cy, n = 18){
   for (let i = 0; i < n; i++){
     const h = document.createElement('span');
@@ -587,7 +625,7 @@ function spawnBurst(parent, cx, cy, n = 18){
     h.style.top  = (cy - size / 2) + 'px';
     h.style.background = CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0];
     const ang  = Math.random() * Math.PI * 2;
-    const dist = 60 + Math.random() * 110;
+    const dist = 70 + Math.random() * 120;
     h.style.setProperty('--bx', Math.cos(ang) * dist + 'px');
     h.style.setProperty('--by', (Math.sin(ang) * dist - 40) + 'px');
     h.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
@@ -596,7 +634,7 @@ function spawnBurst(parent, cx, cy, n = 18){
   }
 }
 
-function heartBurst(n = 22){
+function heartBurst(n = 24){
   spawnBurst(
     content,
     catCanvas.offsetLeft + catCanvas.offsetWidth / 2,
@@ -606,14 +644,14 @@ function heartBurst(n = 22){
 }
 
 /* ============================================================
-   CONFETTI RAIN
+   CONFETTI RAIN (celebration)
    ============================================================ */
 const LOVE_COLORS = [
   '#e8546a', '#ff5d8f', '#d83a52', '#f08aa0', '#ff8fab',
   '#c83048', '#ff7eb3', '#c79bff', '#ff9e6b', '#ffd56b', '#f6b3c2',
 ];
 const rand = (a, b) => a + Math.random() * (b - a);
-const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const pick = arr => arr[(Math.random() * arr.length) | 0];
 
 const GRAVITY_C = 0.20;
 const DRAG_C    = 0.993;
@@ -662,7 +700,8 @@ function confettiTick(){
     p.x += p.vx; p.y += p.vy; p.rot += p.vrot; p.age += 1 / 60;
     const o = p.age < 0.1 ? p.age / 0.1 : Math.max(0, 1 - (p.age - 0.1) / p.life);
     p.el.style.opacity = o.toFixed(2);
-    p.el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot | 0}deg)`;
+    p.el.style.transform =
+      `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot | 0}deg)`;
     if (o <= 0 || p.y > H + 120){ p.el.remove(); confetti.splice(i, 1); }
   }
   if (confetti.length) confettiRAF = requestAnimationFrame(confettiTick);
@@ -699,15 +738,15 @@ function blink(){
 function reset(){
   catState = 'idle';
   stopHappyLoop();
-  title.textContent = 'Happy 1 month, my love ♡ Still love me?';
+  titleEl.textContent = 'Happy 1 month, my love ♡ Still love me?';
   drawSprite(catCanvas, CAT_IDLE);
-  catCanvas.setAttribute('aria-label', 'A little cat holding a heart');
+  catCanvas.setAttribute('aria-label', 'A little cat');
   buttons.hidden = false;
   finalText.hidden = true;
   finalText.classList.remove('is-show');
   content.classList.remove('is-won');
   win.classList.remove('is-celebrate');
-  content.querySelectorAll('.cat-heart, .burst').forEach((el) => el.remove());
+  content.querySelectorAll('.cat-heart, .burst').forEach(el => el.remove());
   stopCelebrate();
   rainBox.replaceChildren();
   yesScale = 1;
@@ -725,7 +764,7 @@ drawSprite(catCanvas, CAT_IDLE);
 spawnConfetti(reduceMotion ? 0.5 : 1);
 
 if (!reduceMotion){
-  addEventListener('pointermove', onParallax, { passive: true });
+  window.addEventListener('pointermove', onParallax, { passive: true });
   setInterval(blink, 3600);
 }
 
@@ -736,10 +775,10 @@ function layoutAim(){
   renderAim(m);
 }
 requestAnimationFrame(layoutAim);
-addEventListener('load', layoutAim);
+window.addEventListener('load', layoutAim);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutAim);
 
-/* ---------------- Test hook ---------------- */
+/* ---------- Test hook ---------- */
 if (new URLSearchParams(location.search).has('record')){
   window.loveAPI = {
     aimUp(){ const m = metrics(); angle = clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx)); renderAim(m); },
@@ -747,9 +786,8 @@ if (new URLSearchParams(location.search).has('record')){
     release(){ fire(); },
     shoot(){ if (flying) return; this.aimUp(); drawn = MAX_DRAW; renderAim(metrics()); fire(); },
     open: openLetter,
-    yes:  sayYes,
-    dodge,
-    reset,
+    yes: sayYes,
+    dodge, reset,
     els: { noBtn, yesBtn, content, aimStage, win, nock: nockEl },
   };
 }
