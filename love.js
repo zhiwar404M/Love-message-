@@ -1,37 +1,47 @@
+/* ============================================================
+   LOVE — an interactive pixel-art love letter
+   Bow now uses a real SVG string + bending limbs
+   Cat now has multi-frame happy / in-love animations
+   ============================================================ */
+
 const $ = (id) => document.getElementById(id);
 
-const aimStage      = $('aimStage');
-const target        = $('target');
-const targetEnv     = target.querySelector('.envelope');
-const arrow         = $('arrow');
-const bow           = $('bow');
-const nockEl        = $('nock');
-const hint          = $('hint');
-const hintText      = $('hintText');
-const win           = $('window');
-const content       = $('content');
-const title         = $('title');
-const catCanvas     = $('cat');
-const buttons       = $('buttons');
-const yesBtn        = $('yesBtn');
-const noBtn         = $('noBtn');
-const finalText     = $('final');
-const closeBtn      = $('closeBtn');
-const confettiBox   = $('confetti');
-const rainBox       = $('rain');
+const aimStage    = $('aimStage');
+const target      = $('target');
+const targetEnv   = target.querySelector('.envelope');
+const arrow       = $('arrow');
+const bowEl       = $('bow');
+const bowLimb     = $('bowLimb');
+const bowString   = $('bowString');
+const bowGrip     = $('bowGrip');
+const nockEl      = $('nock');
+const hintText    = $('hintText');
+const win         = $('window');
+const content     = $('content');
+const title       = $('title');
+const catCanvas   = $('cat');
+const buttons     = $('buttons');
+const yesBtn      = $('yesBtn');
+const noBtn       = $('noBtn');
+const finalText   = $('final');
+const closeBtn    = $('closeBtn');
+const confettiBox = $('confetti');
+const rainBox     = $('rain');
 
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/* ---------------- Pixel palette ---------------- */
 const PAL = {
-  k: '#221d1c',
-  w: '#fdfdfd',
-  p: '#15110f',
-  r: '#e23b4e',
-  d: '#b22a3b',
-  n: '#ff8fa3',
-  c: '#ffb3c1',
+  k: '#221d1c', // outline / fur
+  w: '#fdfdfd', // eye white
+  p: '#15110f', // pupil
+  r: '#e23b4e', // heart red
+  d: '#b22a3b', // dark red (mouth)
+  n: '#ff8fa3', // nose pink
+  c: '#ffb3c1', // blush
 };
 
+/* ---------------- Cat sprites ---------------- */
 const CAT_IDLE = [
   '..k..........k..',
   '.kkk........kkk.',
@@ -40,25 +50,6 @@ const CAT_IDLE = [
   'kwwwwkkkkkkwwwwk',
   'kwppwkkkkkkwppwk',
   'kwppwkkkkkkwppwk',
-  'kcckkkknnkkkkcck',
-  '.kkkkkkkkkkkkkk.',
-  'kkkkkkrrkrrkkkkk',
-  'kkkkkrrrrrrrkkkk',
-  'kkkkkrrrrrrrkkkk',
-  '.kkkkkrrrrrkkkk.',
-  '..kkkkkrrrkkkk..',
-  '....kk..r.kk....',
-  '................',
-];
-
-const CAT_HAPPY = [
-  '..k..........k..',
-  '.kkk........kkk.',
-  'kkkk........kkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kkkkkkkkkkkkkkkk',
-  'kwkkwkkkkkkwkkwk',
-  'kkwwkkkkkkkkwwkk',
   'kcckkkknnkkkkcck',
   '.kkkkkkkkkkkkkk.',
   'kkkkkkrrkrrkkkkk',
@@ -89,9 +80,71 @@ const CAT_BLINK = [
   '................',
 ];
 
+/* Squinty happy eyes ^^ + open smile */
+const CAT_HAPPY_A = [
+  '..k..........k..',
+  '.kkk........kkk.',
+  'kkkk........kkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kwkkwkkkkkkwkkwk',
+  'kkwwkkkkkkkkwwkk',
+  'kcckkkknnkkkkcck',
+  '.kkkkkkddkkkkkk.',
+  'kkkkkkrrkrrkkkkk',
+  'kkkkkrrrrrrrkkkk',
+  'kkkkkrrrrrrrkkkk',
+  '.kkkkkrrrrrkkkk.',
+  '..kkkkkrrrkkkk..',
+  '....kk..r.kk....',
+  '................',
+];
+
+/* Wide sparkly eyes — used for the "bounce" beat */
+const CAT_HAPPY_B = [
+  '..k..........k..',
+  '.kkk........kkk.',
+  'kkkk........kkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kwppwkkkkkkwppwk',
+  'kwppwkkkkkkwppwk',
+  'kcckkkknnkkkkcck',
+  '.kkkkkkddkkkkkk.',
+  'kkkkkkrrkrrkkkkk',
+  'kkkkkrrrrrrrkkkk',
+  'kkkkkrrrrrrrkkkk',
+  '.kkkkkrrrrrkkkk.',
+  '..kkkkkrrrkkkk..',
+  '....kk..r.kk....',
+  '................',
+];
+
+/* Heart eyes — the "in love" beat */
+const CAT_LOVE = [
+  '..k..........k..',
+  '.kkk........kkk.',
+  'kkkk........kkkk',
+  'kkkkkkkkkkkkkkkk',
+  'kkkkkkkkkkkkkkkk',
+  'krrkkkkkkkkkkrrk',
+  'krrkkkkkkkkkkrrk',
+  'kcckkkknnkkkkcck',
+  '.kkkkkkddkkkkkk.',
+  'kkkkkkrrkrrkkkkk',
+  'kkkkkrrrrrrrkkkk',
+  'kkkkkrrrrrrrkkkk',
+  '.kkkkkrrrrrkkkk.',
+  '..kkkkkrrrkkkk..',
+  '....kk..r.kk....',
+  '................',
+];
+
 function drawSprite(canvas, rows){
   const h = rows.length, w = rows[0].length;
-  canvas.width = w; canvas.height = h;
+  if (canvas.width !== w || canvas.height !== h){
+    canvas.width = w; canvas.height = h;
+  }
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, w, h);
   for (let y = 0; y < h; y++){
@@ -103,9 +156,10 @@ function drawSprite(canvas, rows){
   }
 }
 
+/* ---------------- Ambient confetti ---------------- */
 const CONFETTI_COLORS = ['#e8546a', '#f08aa0', '#d83a52', '#f6b3c2', '#c83048'];
-
 const PARALLAX = [];
+
 function spawnConfetti(scale = 1){
   const LAYERS = [
     { n: 22, factor: 7,  min: 5,  max: 9,  blur: 1.6, op: .5 },
@@ -144,11 +198,12 @@ function applyParallax(){
   target.style.transform = `translateX(-50%) translate(${pX * 12}px, ${pY * 9}px)`;
 }
 function onParallax(e){
-  pX = (e.clientX / window.innerWidth  - .5) * 2;
-  pY = (e.clientY / window.innerHeight - .5) * 2;
+  pX = (e.clientX / innerWidth  - .5) * 2;
+  pY = (e.clientY / innerHeight - .5) * 2;
   if (!parallaxRAF) parallaxRAF = requestAnimationFrame(applyParallax);
 }
 
+/* ---------------- Letter window ---------------- */
 function openLetter(){
   aimStage.classList.add('is-gone');
   win.classList.add('is-open');
@@ -164,33 +219,70 @@ function closeLetter(){
   resetAim();
   setTimeout(() => aimStage.focus({ preventScroll: true }), reduceMotion ? 0 : 420);
 }
-
 closeBtn.addEventListener('click', closeLetter);
 
-const DEFAULT_HINT = 'پەنجەت دابگرە بۆ ڕاکێشانی کەوانەکە — بەرەڵای بکە بۆ پێکانی دڵم ♡';
-const MISS_HINTS = ['زۆر نزیک بوویت — دووبارە هەوڵبدەرەوە گیانەکەم ♡', 'نیشانە ڕاستەوخۆ لە ناوەڕاستی دڵم بگرە ♡', 'تیری عەشقەکەمان نابێت هەرگیز هەڵە بکات ♡'];
-const ARROW_LEN  = 56;
+/* ============================================================
+   BOW & ARROW
+   ============================================================ */
 
-const MIN_DRAW   = 6;
-const MAX_DRAW   = 34;
-const DRAW_TIME  = 380;
-const FLEX       = 0.12;
+const DEFAULT_HINT = 'Hold to draw the bow — release to shoot ♡';
+const MISS_HINTS   = ['So close — try again ♡', 'Aim for the heart ♡', 'Cupid never misses twice ♡'];
+
+const ARROW_LEN  = 56;
+const MIN_DRAW   = 8;
+const MAX_DRAW   = 72;
+const DRAW_TIME  = 420;
 const BASE_SPEED = 8.5;
 const MAX_SPEED  = 17;
 const GRAVITY    = 0.03;
-const RECOIL_MS  = 220;
+const RECOIL_MS  = 260;
 const HIT_MARGIN = 22;
 
-function restAngle(m){ return clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx)); }
+/* Bow geometry (SVG user units == px, viewBox is -90..90) */
+const BOW_TIP_Y   = 76;
+const BOW_BULGE_L = 40;   // limb bulge at rest
+const BOW_BULGE_H = 52;   // limb bulge at full draw
 
-let angle = -Math.PI / 2;
-let aiming = false;
-let flying = false;
+let angle     = -Math.PI / 2;
+let aiming    = false;
+let flying    = false;
 let missCount = 0;
-let drawn = 0;
-let rafId = 0;
-let drawRAF = 0;
+let drawn     = 0;
+let rafId     = 0;
+let drawRAF   = 0;
 let drawStartT = 0;
+
+const bowState = { deg: null, pull: null };
+
+function setBow(deg, pull){
+  if (deg !== bowState.deg){
+    bowEl.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+    bowState.deg = deg;
+  }
+
+  // allow a small negative pull so the string visibly snaps past rest
+  const p = Math.max(-MAX_DRAW * 0.28, Math.min(MAX_DRAW * 1.06, pull));
+  if (bowState.pull !== null && Math.abs(p - bowState.pull) < 0.08) return;
+  bowState.pull = p;
+
+  const t = Math.max(0, Math.min(1, p / MAX_DRAW));
+  const bulge = BOW_BULGE_L + (BOW_BULGE_H - BOW_BULGE_L) * t;
+  const tipX  = -t * 7;
+  const tipY  = BOW_TIP_Y - t * 2;
+  const pullX = -p;
+
+  bowLimb.setAttribute('d',
+    `M${tipX.toFixed(2)} ${(-tipY).toFixed(2)}` +
+    `Q${bulge.toFixed(2)} ${(-tipY * 0.55).toFixed(2)} ${bulge.toFixed(2)} 0` +
+    `Q${bulge.toFixed(2)} ${( tipY * 0.55).toFixed(2)} ${tipX.toFixed(2)} ${tipY.toFixed(2)}`
+  );
+  bowString.setAttribute('d',
+    `M${tipX.toFixed(2)} ${(-tipY).toFixed(2)}` +
+    `L${pullX.toFixed(2)} 0` +
+    `L${tipX.toFixed(2)} ${tipY.toFixed(2)}`
+  );
+  bowGrip.setAttribute('x', (bulge - 9).toFixed(2));
+}
 
 function metrics(){
   const s = aimStage.getBoundingClientRect();
@@ -213,13 +305,13 @@ function clampAngle(a){
   return d * Math.PI / 180;
 }
 
-function renderBow(deg, flex){
-  bow.style.transform = `rotate(${deg}deg) scaleX(${flex})`;
+function restAngle(m){
+  return clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx));
 }
 
 function renderAim(m){
   const deg = angle * 180 / Math.PI;
-  renderBow(deg, 1 + (drawn / MAX_DRAW) * FLEX);
+  setBow(deg, drawn);
   const tx = m.nx - Math.cos(angle) * drawn;
   const ty = m.ny - Math.sin(angle) * drawn;
   arrow.style.transform = `translate(${tx}px, ${ty}px) rotate(${deg}deg)`;
@@ -239,13 +331,15 @@ function startDraw(){
   drawStartT = performance.now();
   if (!drawRAF) drawRAF = requestAnimationFrame(drawStep);
 }
+
 function drawStep(now){
   drawRAF = 0;
   if (!aiming || flying) return;
   const t = Math.min(1, (now - drawStartT) / DRAW_TIME);
-  const eased = 1 - Math.pow(1 - t, 2.2);
+  const eased = 1 - Math.pow(1 - t, 2.4);
   drawn = MIN_DRAW + (MAX_DRAW - MIN_DRAW) * eased;
-  if (t > 0.8) drawn += Math.sin(now / 38) * 0.7;
+  // subtle tension tremor near full draw
+  if (t > 0.78) drawn += Math.sin(now / 34) * 0.9;
   renderAim(metrics());
   drawRAF = requestAnimationFrame(drawStep);
 }
@@ -265,11 +359,10 @@ function fire(power){
 
   const m = metrics();
   const launchDraw = drawn;
-  const startFlex  = 1 + (launchDraw / MAX_DRAW) * FLEX;
   drawn = 0;
 
   if (reduceMotion){
-    renderBow(angle * 180 / Math.PI, 1);
+    setBow(angle * 180 / Math.PI, 0);
     onHit(m);
     return;
   }
@@ -284,8 +377,9 @@ function fire(power){
 
   function step(now){
     const bt = Math.min(1, (now - t0) / RECOIL_MS);
-    const flex = 1 + (startFlex - 1) * Math.cos(bt * Math.PI * 1.5) * (1 - bt);
-    renderBow(angle * 180 / Math.PI, Math.max(0.9, flex));
+    // damped oscillation → string snaps forward, wobbles, settles
+    const pull = launchDraw * Math.exp(-bt * 4.2) * Math.cos(bt * Math.PI * 2.6);
+    setBow(angle * 180 / Math.PI, pull);
 
     vy += GRAVITY;
     tx += vx; ty += vy;
@@ -332,7 +426,7 @@ function onHit(m, dir){
   arrow.style.transform = `translate(${tailx}px, ${taily}px) rotate(${deg}deg)`;
   target.classList.add('is-hit');
   target.classList.remove('is-pulse');
-  if (!reduceMotion) spawnBurst(aimStage, m.tx, m.ty, 18);
+  if (!reduceMotion) spawnBurst(aimStage, m.tx, m.ty, 22);
   setTimeout(openLetter, reduceMotion ? 0 : 470);
 }
 
@@ -362,7 +456,9 @@ function resetAim(){
   renderAim(m);
 }
 
+/* ---------------- Input ---------------- */
 aimStage.addEventListener('pointermove', (e) => { if (!flying) updateAim(e.clientX, e.clientY); });
+
 aimStage.addEventListener('pointerdown', (e) => {
   if (flying) return;
   const m = metrics();
@@ -370,7 +466,8 @@ aimStage.addEventListener('pointerdown', (e) => {
   aiming = true;
   startDraw();
 });
-window.addEventListener('pointerup', release);
+
+addEventListener('pointerup', release);
 
 aimStage.addEventListener('keydown', (e) => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
@@ -383,24 +480,27 @@ aimStage.addEventListener('keydown', (e) => {
   setTimeout(release, reduceMotion ? 0 : DRAW_TIME + 60);
 });
 
-window.addEventListener('resize', () => { if (!flying) renderAim(metrics()); });
+addEventListener('resize', () => { if (!flying) renderAim(metrics()); });
+
+/* ============================================================
+   LETTER CONTENT  (YES / NO + cat states)
+   ============================================================ */
 
 let yesScale = 1;
 let catState = 'idle';
+let happyTimer = 0;
 
 function dodge(e){
-  if (e){ e.preventDefault(); }
+  if (e) e.preventDefault();
 
   const area = content.getBoundingClientRect();
   const b = noBtn.getBoundingClientRect();
   const pad = 10;
 
   if (getComputedStyle(noBtn).position !== 'absolute'){
-    const startX = b.left - area.left;
-    const startY = b.top  - area.top;
     noBtn.style.position = 'absolute';
-    noBtn.style.left = startX + 'px';
-    noBtn.style.top  = startY + 'px';
+    noBtn.style.left = (b.left - area.left) + 'px';
+    noBtn.style.top  = (b.top  - area.top ) + 'px';
   }
 
   const y = yesBtn.getBoundingClientRect();
@@ -432,11 +532,25 @@ noBtn.addEventListener('pointerdown', dodge);
 noBtn.addEventListener('click', dodge);
 noBtn.addEventListener('focus', dodge);
 
+function startHappyLoop(){
+  if (reduceMotion || happyTimer) return;
+  const frames = [CAT_HAPPY_A, CAT_HAPPY_B, CAT_HAPPY_A, CAT_LOVE];
+  let i = 0;
+  drawSprite(catCanvas, frames[i]);
+  happyTimer = setInterval(() => {
+    i = (i + 1) % frames.length;
+    drawSprite(catCanvas, frames[i]);
+  }, 300);
+}
+function stopHappyLoop(){
+  clearInterval(happyTimer);
+  happyTimer = 0;
+}
+
 function sayYes(){
   catState = 'happy';
-  title.textContent = 'قوربانت بم! منیش بێ سنوور ئاشقتم ♡';
-  drawSprite(catCanvas, CAT_HAPPY);
-  catCanvas.setAttribute('aria-label', 'پشیلەیەکی دڵخۆش بە کەوانەیەکەوە');
+  title.textContent = 'Yayyy! I love you ♡';
+  catCanvas.setAttribute('aria-label', 'A happy bouncing cat');
 
   buttons.hidden = true;
   finalText.hidden = false;
@@ -451,11 +565,18 @@ function sayYes(){
 
   content.classList.add('is-won');
   win.classList.add('is-celebrate');
-  if (!reduceMotion){ heartBurst(); celebrate(); }
+
+  startHappyLoop();
+
+  if (!reduceMotion){
+    heartBurst();
+    celebrate();
+  }
 }
 
 yesBtn.addEventListener('click', sayYes);
 
+/* ---------------- Burst helpers ---------------- */
 function spawnBurst(parent, cx, cy, n = 18){
   for (let i = 0; i < n; i++){
     const h = document.createElement('span');
@@ -465,7 +586,7 @@ function spawnBurst(parent, cx, cy, n = 18){
     h.style.left = (cx - size / 2) + 'px';
     h.style.top  = (cy - size / 2) + 'px';
     h.style.background = CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0];
-    const ang = Math.random() * Math.PI * 2;
+    const ang  = Math.random() * Math.PI * 2;
     const dist = 60 + Math.random() * 110;
     h.style.setProperty('--bx', Math.cos(ang) * dist + 'px');
     h.style.setProperty('--by', (Math.sin(ang) * dist - 40) + 'px');
@@ -476,11 +597,17 @@ function spawnBurst(parent, cx, cy, n = 18){
 }
 
 function heartBurst(n = 22){
-  spawnBurst(content,
+  spawnBurst(
+    content,
     catCanvas.offsetLeft + catCanvas.offsetWidth / 2,
-    catCanvas.offsetTop  + catCanvas.offsetHeight / 2, n);
+    catCanvas.offsetTop  + catCanvas.offsetHeight / 2,
+    n
+  );
 }
 
+/* ============================================================
+   CONFETTI RAIN
+   ============================================================ */
 const LOVE_COLORS = [
   '#e8546a', '#ff5d8f', '#d83a52', '#f08aa0', '#ff8fab',
   '#c83048', '#ff7eb3', '#c79bff', '#ff9e6b', '#ffd56b', '#f6b3c2',
@@ -488,8 +615,8 @@ const LOVE_COLORS = [
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 
-const GRAVITY_C   = 0.20;
-const DRAG_C      = 0.993;
+const GRAVITY_C = 0.20;
+const DRAG_C    = 0.993;
 
 const confetti = [];
 let confettiRAF = 0;
@@ -502,15 +629,11 @@ function addConfetti(x, y, vx, vy, size){
   el.style.width = el.style.height = size.toFixed(0) + 'px';
   el.style.background = pick(LOVE_COLORS);
   rainBox.appendChild(el);
-  confetti.push({ el, x, y, vx, vy, rot: rand(0, 360), vrot: rand(-7, 7), age: 0, life: rand(2.6, 3.6) });
-}
-
-function confettiBurst(){
-  const W = innerWidth, H = innerHeight;
-  const n = confScale < 0.7 ? 4 : 5;
-  popper(-14,    H + 14, -Math.PI * 0.34, n);
-  popper(W + 14, H + 14, -Math.PI * 0.66, n);
-  popper(W / 2,  H + 14, -Math.PI * 0.50, n);
+  confetti.push({
+    el, x, y, vx, vy,
+    rot: rand(0, 360), vrot: rand(-7, 7),
+    age: 0, life: rand(2.6, 3.6),
+  });
 }
 
 function popper(x, y, ang, n){
@@ -519,6 +642,14 @@ function popper(x, y, ang, n){
     const sp = rand(14, 21) * confScale;
     addConfetti(x, y, Math.cos(a) * sp, Math.sin(a) * sp, rand(48, 96) * confScale);
   }
+}
+
+function confettiBurst(){
+  const W = innerWidth, H = innerHeight;
+  const n = confScale < 0.7 ? 4 : 5;
+  popper(-14,    H + 14, -Math.PI * 0.34, n);
+  popper(W + 14, H + 14, -Math.PI * 0.66, n);
+  popper(W / 2,  H + 14, -Math.PI * 0.50, n);
 }
 
 function confettiTick(){
@@ -556,6 +687,9 @@ function stopCelebrate(){
   confetti.length = 0;
 }
 
+/* ============================================================
+   RESET / IDLE
+   ============================================================ */
 function blink(){
   if (catState !== 'idle') return;
   drawSprite(catCanvas, CAT_BLINK);
@@ -564,9 +698,10 @@ function blink(){
 
 function reset(){
   catState = 'idle';
-  title.textContent = 'یادی یەک مانگەی پێکەوەبوونمان پیرۆز تاقانەکەم ♡ هێشتا منت خۆش دەوێت؟';
+  stopHappyLoop();
+  title.textContent = 'Happy 1 month, my love ♡ Still love me?';
   drawSprite(catCanvas, CAT_IDLE);
-  catCanvas.setAttribute('aria-label', 'پشیلەیەکی بچووک دڵێکی گرتووە');
+  catCanvas.setAttribute('aria-label', 'A little cat holding a heart');
   buttons.hidden = false;
   finalText.hidden = true;
   finalText.classList.remove('is-show');
@@ -583,19 +718,28 @@ function reset(){
   noBtn.style.top = '';
 }
 
+/* ============================================================
+   BOOT
+   ============================================================ */
 drawSprite(catCanvas, CAT_IDLE);
 spawnConfetti(reduceMotion ? 0.5 : 1);
 
 if (!reduceMotion){
-  window.addEventListener('pointermove', onParallax, { passive: true });
+  addEventListener('pointermove', onParallax, { passive: true });
   setInterval(blink, 3600);
 }
 
-function layoutAim(){ if (flying) return; const m = metrics(); angle = restAngle(m); renderAim(m); }
+function layoutAim(){
+  if (flying) return;
+  const m = metrics();
+  angle = restAngle(m);
+  renderAim(m);
+}
 requestAnimationFrame(layoutAim);
-window.addEventListener('load', layoutAim);
+addEventListener('load', layoutAim);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutAim);
 
+/* ---------------- Test hook ---------------- */
 if (new URLSearchParams(location.search).has('record')){
   window.loveAPI = {
     aimUp(){ const m = metrics(); angle = clampAngle(Math.atan2(m.ty - m.ny, m.tx - m.nx)); renderAim(m); },
