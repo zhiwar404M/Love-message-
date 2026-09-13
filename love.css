@@ -153,10 +153,16 @@ body{
   z-index:2;
 }
 .target__label{
-  font-size:1.35rem;
+  font-size:clamp(0.85rem, 3.5vw, 1.35rem);
   letter-spacing:.02em;
   color:var(--maroon);
-  display:flex; align-items:center; gap:.4em;
+  display:flex; align-items:center; justify-content:center; gap:.4em;
+  direction:rtl;
+  text-align:center;
+  white-space:nowrap;
+  font-family:"Vazirmatn", "Noto Naskh Arabic", Tahoma, sans-serif;
+  max-width:100vw;
+  overflow:hidden;
 }
 
 .envelope{
