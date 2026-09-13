@@ -564,7 +564,7 @@ function blink(){
 
 function reset(){
   catState = 'idle';
-  title.textContent = 'یادی یەک مانگەی پێکەوەبوونمان پیرۆز تاقانەکەم ♡ هێشتا منت خۆش دەوێت؟';
+  title.textContent = 'ئایا بەجدی تۆ منت ئەوەندە خۆشەوێی 🙇🏻‍♂️؟!';
   drawSprite(catCanvas, CAT_IDLE);
   catCanvas.setAttribute('aria-label', 'پشیلەیەکی بچووک دڵێکی گرتووە');
   buttons.hidden = false;
