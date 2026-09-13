@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 :root{
   --cream:       #f7efe3;
   --coral:       #d97b73;
@@ -14,8 +15,8 @@
 
   --heart-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.6 4.1 13.7a5.1 5.1 0 0 1 7.2-7.2l.7.7.7-.7a5.1 5.1 0 1 1 7.2 7.2z'/%3E%3C/svg%3E");
 
-  --font-pix:  "Press Start 2P", monospace;
---font-body: "Vazirmatn", "Noto Naskh Arabic", "Pixelify Sans", sans-serif;
+  --font-pix: "Press Start 2P", monospace;
+  --font-body: "Vazirmatn", "Noto Naskh Arabic", "Rabar", "Speda", Tahoma, sans-serif;
   --ease:      cubic-bezier(.34,1.56,.64,1);
 }
 
